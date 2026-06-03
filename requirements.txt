@@ -1,4 +1,4 @@
-rarfile>=5.0
+rarfile>=4.2
 # GPU 加速（可选，需要 CUDA 环境）
 # cupy-cuda11x>=12.0  # CUDA 11.x
 # cupy-cuda12x>=12.0  # CUDA 12.x
