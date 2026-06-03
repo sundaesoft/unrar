@@ -94,24 +94,36 @@ def crack_with_hashcat(filepath: str, file_type: str, charset: str, min_len: int
                 hash_input = f.name
                 print(f"[*] 已提取 ZIP 哈希")
     
-    # 构建掩码字符
-    mask_char = ''
-    if any(c in string.digits for c in charset): mask_char += 'd'
-    if any(c in string.ascii_lowercase for c in charset): mask_char += 'l'
-    if any(c in string.ascii_uppercase for c in charset): mask_char += 'u'
-    if any(c in string.punctuation for c in charset): mask_char += 's'
-    mask_char = mask_char or 'a'
+    # 构建掩码：?a=全部（字母 + 数字 + 特殊字符）
+    # Hashcat 标准掩码：?l=小写 ?u=大写 ?d=数字 ?s=特殊字符 ?a=全部
+    # 如果字符集包含所有类型，直接用 ?a
+    has_lower = any(c in string.ascii_lowercase for c in charset)
+    has_upper = any(c in string.ascii_uppercase for c in charset)
+    has_digit = any(c in string.digits for c in charset)
+    has_special = any(c in string.punctuation for c in charset)
+    
+    # 如果四种都有，用 ?a；否则用自定义字符集 -1
+    if has_lower and has_upper and has_digit and has_special:
+        use_custom_charset = False
+        mask_base = '?a'
+    else:
+        use_custom_charset = True
+        mask_base = '?1'
     
     # 构建命令
     cmd = [hashcat_path, '-m', mode, '-a', '3', '-w', '3', '--force']
     
     if min_len == max_len:
-        mask = mask_char * min_len
+        mask = mask_base * min_len
     else:
-        mask = mask_char * min_len
-        cmd.extend(['--increment', '--increment-max', str(max_len)])
+        mask = mask_base * min_len
+        cmd.extend(['--increment', '--increment-min', str(min_len), '--increment-max', str(max_len)])
     
-    cmd.extend(['-1', charset, mask, hash_input])
+    # 如果使用自定义字符集
+    if use_custom_charset:
+        cmd.extend(['-1', charset, mask, hash_input])
+    else:
+        cmd.extend([mask, hash_input])
     
     print(f"[*] Hashcat 命令：{' '.join(cmd)}")
     print(f"[*] 模式：{mode} | 掩码：{mask}")
